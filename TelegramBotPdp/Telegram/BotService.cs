@@ -170,37 +170,56 @@ public class BotService
     public static async Task CreateQRCodeAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, AppDbContext dbContext)
     {
 
-            ChatId chatId = update.Message!.Chat.Id;
-            ReplyKeyboardMarkup reply = new(
-                           new[]
-                           {
+        ChatId chatId = update.Message!.Chat.Id;
+        ReplyKeyboardMarkup reply = new(
+                       new[]
+                       {
                                         new KeyboardButton[]{"QR Code olish"}
-                           })
-            { ResizeKeyboard = true };
-            if (update!.Message.Text == "QR Code olish")
+                       })
+        { ResizeKeyboard = true };
+        if (update!.Message.Text == "QR Code olish")
+        {
+            var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == chatId.ToString());
+
+            if (student!.Limit > 0)
             {
                 string path = Guid.NewGuid().ToString() + ".npg";
                 QRCodeGenerator qRCodeGenerator = new();
-                QRCodeData qRCodeData = qRCodeGenerator.CreateQrCode("https://t.me/Turdialiev_Golibjon_02_26", QRCodeGenerator.ECCLevel.Q);
+                QRCodeData qRCodeData = qRCodeGenerator.CreateQrCode($"https://t.me/{Guid.NewGuid()}", QRCodeGenerator.ECCLevel.Q);
                 QRCode qrCode = new(qRCodeData);
-                Bitmap bitmap = qrCode.GetGraphic(20,System.Drawing.Color.DarkRed, System.Drawing.Color.BurlyWood,true);
+                Bitmap bitmap = qrCode.GetGraphic(20, System.Drawing.Color.DarkRed, System.Drawing.Color.BurlyWood, true);
                 bitmap.Save(path);
                 using (Stream stream = System.IO.File.OpenRead(path))
 
                 {
-                   await botClient.SendPhotoAsync(chatId: chatId, photo: InputFile.FromStream(stream), caption: "Quyidagi QR Code 12 soat davomida amal qiladi");
+                    await botClient.SendPhotoAsync(chatId: chatId, photo: InputFile.FromStream(stream), caption: "Quyidagi QR Code 12 soat davomida amal qiladi");
 
                 }
-                var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == chatId.ToString());
-                student!.Limit = -1;
+                student!.Limit = student!.Limit - 1;
+                if (student!.Limit == 0)
+                {
+                    await botClient.SendTextMessageAsync(chatId, text: $"Sizning limitingiz tugadi yana limit olish uchun start bosib malumotlaringizni qayta yuboring", replyMarkup: new ReplyKeyboardRemove());
+                    student.State = State.ForFullName.ToString();
+                    student.IsConfirmed = false;
+                    student.IsRightInformation = false;
+                    dbContext.Students.Update(student);
+                }
+                else
+                    await botClient.SendTextMessageAsync(chatId, text: $"Sizning limitingiz {student.Limit} ta qoldi", replyMarkup: reply);
                 await dbContext.SaveChangesAsync();
-                await botClient.SendTextMessageAsync(chatId, text: $"Sizning limitingiz {student.Limit} ta qoldi", replyMarkup: reply);
                 System.IO.File.Delete(path);
+
             }
             else
             {
-                await botClient.SendTextMessageAsync(chatId, text: "QR Code olish uchun Buttonni bosing!", replyMarkup: reply);
+                await botClient.SendTextMessageAsync(chatId, text: $"sizning limitingiz tugagan yana limit olish uchun start bosing!", replyMarkup: reply);
+
             }
+        }
+        else
+        {
+            await botClient.SendTextMessageAsync(chatId, text: "QR Code olish uchun Buttonni bosing!", replyMarkup: reply);
+        }
     }
 }
 
