@@ -11,8 +11,8 @@ using TelegramBotPdp;
 namespace TelegramBotPdp.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20240128073555_CreateDb")]
-    partial class CreateDb
+    [Migration("20240129131510_createDb")]
+    partial class createDb
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -25,7 +25,10 @@ namespace TelegramBotPdp.Migrations
                     b.Property<string>("Id")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTime>("Created")
+                    b.Property<DateTime>("CreatedQRCode")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("FirstName")
                         .HasColumnType("TEXT");
 
                     b.Property<bool>("IsConfirmed")
@@ -34,11 +37,11 @@ namespace TelegramBotPdp.Migrations
                     b.Property<bool>("IsRightInformation")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("LastName")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("Limit")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("Name")
-                        .HasColumnType("TEXT");
 
                     b.Property<string>("PhoneNumber")
                         .HasColumnType("TEXT");

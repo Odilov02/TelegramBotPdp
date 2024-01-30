@@ -17,17 +17,17 @@ public class BotService
             if (student.IsConfirmed)
                 await botClient.SendTextMessageAsync(id, "QR Code olishingiz mumkun", replyMarkup: new ReplyKeyboardRemove());
             else
-                await botClient.SendTextMessageAsync(id, "Iltimos kutib turing malumotlaringiz tasdiqlash uchun yuborilgan!", replyMarkup: new ReplyKeyboardRemove());
+                await botClient.SendTextMessageAsync(id, "Iltimos, kutib turing ma'lumotlaringiz tasdiqlash uchun yuborilgan!", replyMarkup: new ReplyKeyboardRemove());
         else
         {
-            await botClient.SendTextMessageAsync(id, "Qaytadan malumotlaringizni kiriting!", replyMarkup: new ReplyKeyboardRemove());
-            student.State = State.ForFullName.ToString();
-            student.Name = null;
+            await botClient.SendTextMessageAsync(id, "Qaytadan ma'lumotlaringizni kiriting!", replyMarkup: new ReplyKeyboardRemove());
+            student.State = State.ForFirstName.ToString();
+            student.FirstName = null;
+            student.LastName = null;
             student.PhoneNumber = null;
             student.Reason = null;
-            student.Created = DateTime.Now;
             await dbContext.SaveChangesAsync();
-            await botClient.SendTextMessageAsync(id, "Ism-Familiyangizni kiriting:", replyMarkup: new ReplyKeyboardRemove());
+            await botClient.SendTextMessageAsync(id, "Ismingizni kiriting:", replyMarkup: new ReplyKeyboardRemove());
         }
     }
 
@@ -37,37 +37,62 @@ public class BotService
         var result = await dbContext.Students.AddAsync(new Student()
         {
             Id = id,
-            Created = DateTime.Now,
             IsConfirmed = false,
-            State = State.ForFullName.ToString(),
+            State = State.ForFirstName.ToString(),
             IsRightInformation = false
         });
         dbContext.SaveChanges();
-        await botClient.SendTextMessageAsync(id, "Ism-Familiyangizni kiriting:");
+        await botClient.SendTextMessageAsync(id, "Ismingizni kiriting:");
     }
 
-    public static async Task ForFullNameAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, AppDbContext dbContext)
+    public static async Task ForFirstNameAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, AppDbContext dbContext)
     {
 
         ChatId chatId = update.Message!.Chat.Id;
         var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == chatId.ToString());
-        student!.Name = update.Message.Text;
+        student!.FirstName = update.Message.Text;
+        student!.State = State.ForLastName.ToString();
+        dbContext.Students.Update(student);
+        await dbContext.SaveChangesAsync();
+        await botClient.SendTextMessageAsync(chatId, "Familiyangizni kiriting:");
+    }
+       public static async Task ForLastNameAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, AppDbContext dbContext)
+    {
+
+        ChatId chatId = update.Message!.Chat.Id;
+        var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == chatId.ToString());
+        student!.LastName = update.Message.Text;
         student!.State = State.ForPhoneNumber.ToString();
         dbContext.Students.Update(student);
         await dbContext.SaveChangesAsync();
-        await botClient.SendTextMessageAsync(chatId, "Phone Number");
+        await botClient.SendTextMessageAsync(chatId, "PDP Academy saytidan ro'yxatdan o'tgan telefon nomeringizni kiriting\nExemple: 912345678");
     }
 
     public static async Task ForPhoneNumberAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, AppDbContext dbContext)
     {
-
-        ChatId chatId = update.Message!.Chat.Id;
-        var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == chatId.ToString());
-        student!.PhoneNumber = update.Message.Text;
-        student!.State = State.ForReason.ToString();
-        dbContext.Students.Update(student);
-        await dbContext.SaveChangesAsync();
-        await botClient.SendTextMessageAsync(chatId, "reason");
+        bool isNum = true;
+        foreach (char ch in update.Message!.Text!)
+        {
+            if (!char.IsDigit(ch))
+            {
+                isNum = false;
+            }
+        }
+            ChatId chatId = update.Message!.Chat.Id;
+        if (isNum)
+        {
+            var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == chatId.ToString());
+            student!.PhoneNumber = update.Message.Text;
+            student!.State = State.ForReason.ToString();
+            dbContext.Students.Update(student);
+            await dbContext.SaveChangesAsync();
+            await botClient.SendTextMessageAsync(chatId, "PDP Academy binosiga kelishdan maqsadingiz:");
+        }
+        else
+        {
+            await botClient.SendTextMessageAsync(chatId, "Telefon nomerni noto'g'ri formatda kiritdingiz!\nIltimos qayta kiriting:");
+           
+        }
     }
 
     public static async Task ForReasonAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, AppDbContext dbContext)
@@ -90,7 +115,7 @@ public class BotService
                         .WithCallbackData(text: "Bekor Qilish!", callbackData: false.ToString())
                 }});
         string result = $"Malumotlaringizni tog'riligini tekshiring!\n\n  " +
-            $"Ism-Familiya: {student.Name}\n Telefon Nomer: {student.PhoneNumber}\n " +
+            $"Ism: {student.FirstName}\nFamiliya: {student.LastName}\nTelefon Nomer: {student.PhoneNumber}\n " +
             $"Kelishdan Maqsad:\n{student.Reason}";
         await botClient.SendTextMessageAsync(chatId, result, replyMarkup: markup);
     }
@@ -106,46 +131,48 @@ public class BotService
             student!.State = State.ForIsRightInformation.ToString();
             dbContext.Students.Update(student);
             await dbContext.SaveChangesAsync();
-            await botClient.SendTextMessageAsync(chatId, "Sizning malumotingiz yuborildi\nIltimos bir oz kuting", replyMarkup: new ReplyKeyboardRemove());
+            await botClient.SendTextMessageAsync(chatId, "Ma'lumotlaringiz yuborildi.\nIltimos bir oz kuting!", replyMarkup: new ReplyKeyboardRemove());
             var markup = new InlineKeyboardMarkup(
                    new InlineKeyboardButton[][]
                    {
                 new InlineKeyboardButton[]
                 {
                     InlineKeyboardButton
-                        .WithCallbackData(text: "Tasdiqlash!",(chatId+ true.ToString())),
+                        .WithCallbackData(text: "Tasdiqlash!",(chatId+ 0.ToString())),
 
                     InlineKeyboardButton
-                        .WithCallbackData(text: "Bekor Qilish!",(chatId+ false.ToString()))
+                        .WithCallbackData(text: "Bekor Qilish!",(chatId+ 1.ToString()))
                 }});
-            string result = $"Pastdagi Ma'lumotlarga ega student kirish uchun so'rov yubordi!\n\n  " +
-                $"Ism-Familiya: {student.Name}\n Telefon Nomer: {student.PhoneNumber}\n " +
+            string result = $"Quyidagi ma'lumotlarga ega student kirish uchun so'rov yubordi:\n\n  " +
+                $"Ism: {student.FirstName}\nFamiliya: {student.LastName}\nTelefon Nomer: {student.PhoneNumber}\n " +
                 $"Kelishdan Maqsad:\n{student.Reason}";
             await botClient.SendTextMessageAsync(ConfigurationService._configuration!["Admin"]!, result, replyMarkup: markup);
         }
         else
         {
-            await botClient.SendTextMessageAsync(chatId, "Qaytadan malumotlaringizni kiriting!");
-            student!.State = State.ForFullName.ToString();
-            student.Name = null;
+            await botClient.SendTextMessageAsync(chatId, "Qaytadan ma'lumotlaringizni kiriting!");
+            student!.State = State.ForFirstName.ToString();
+            student.FirstName = null;
+            student.LastName = null;
             student.PhoneNumber = null;
             student.Reason = null;
-            student.Created = DateTime.Now;
             await dbContext.SaveChangesAsync();
-            await botClient.SendTextMessageAsync(chatId, "Ism-Familiyangizni kiriting:");
+            await botClient.SendTextMessageAsync(chatId, "Ismingizni kiriting:");
         }
     }
 
     public static async Task ForAdminConfirmedAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, AppDbContext dbContext)
     {
         ChatId chatId = update.CallbackQuery!.From.Id;
-        string studentId = update.CallbackQuery.Data!.ToString().Substring(0, 10);
-        string IsTrue = update.CallbackQuery.Data.ToString().Substring(10);
+        string data = update.CallbackQuery.Data!.ToString();
+        string studentId=data.Substring(0, data.Length - 1);
+        string IsTrue = data.Substring(data.Length-1);
         var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == studentId);
-        if (IsTrue == "True")
+        if (IsTrue == "0")
         {
             student!.IsConfirmed = true;
             student!.State = State.ForConfirmed.ToString();
+            student.CreatedQRCode=DateTime.Now.AddDays(-1);
             student.Limit = int.Parse(ConfigurationService._configuration!["Limit"]!);
             dbContext.Students.Update(student);
             await dbContext.SaveChangesAsync();
@@ -155,15 +182,15 @@ public class BotService
                                         new KeyboardButton[]{"QR Code olish"}
                                     })
             { ResizeKeyboard = true };
-            await botClient.SendTextMessageAsync(studentId!, "Malumotlaringiz muvafaqiyatli tasdiqlandi endi siz QR Code olishingiz mumkun!", replyMarkup: reply);
-            await botClient.SendTextMessageAsync(ConfigurationService._configuration!["Admin"]!, $"{student.Name} \n\n Mufaqqiyatli  tasdiqlandi!");
+            await botClient.SendTextMessageAsync(studentId!, "Ma'lumotlaringiz muvaffaqiyatli tasdiqlandi. Endi siz QR Code olishingiz mumkun!", replyMarkup: reply);
+            await botClient.SendTextMessageAsync(ConfigurationService._configuration!["Admin"]!, $"ism: {student.FirstName}\nFamiliya: {student.LastName} \n\nMuvaffaqiyatli  tasdiqlandi!");
         }
         else
         {
             dbContext.Students.Remove(student!);
             await dbContext.SaveChangesAsync();
-            await botClient.SendTextMessageAsync(studentId!, "Malumotlaringiz Tasdiqlanmadi!\n @Izzatillo_Ubaydullayev ga murojat qiling!");
-            await botClient.SendTextMessageAsync(ConfigurationService._configuration!["Admin"]!, $"{student!.Name} \n\n Tasdiqlanmadi!");
+            await botClient.SendTextMessageAsync(studentId!, "Ma'lumotlaringiz Tasdiqlanmadi!\n @Izzatillo_Ubaydullayev ga murojat qiling!");
+            await botClient.SendTextMessageAsync(ConfigurationService._configuration!["Admin"]!, $"Ism:{student!.FirstName}\nFamiliya: {student.LastName} \n\nTasdiqlanmadi!");
         }
 
     }
@@ -180,39 +207,44 @@ public class BotService
         if (update!.Message.Text == "QR Code olish")
         {
             var student = await dbContext.Students.FirstOrDefaultAsync(x => x.Id == chatId.ToString());
-
             if (student!.Limit > 0)
             {
-                string path = Guid.NewGuid().ToString() + ".npg";
-                QRCodeGenerator qRCodeGenerator = new();
-                QRCodeData qRCodeData = qRCodeGenerator.CreateQrCode($"https://t.me/{Guid.NewGuid()}", QRCodeGenerator.ECCLevel.Q);
-                QRCode qrCode = new(qRCodeData);
-                Bitmap bitmap = qrCode.GetGraphic(20, System.Drawing.Color.DarkRed, System.Drawing.Color.BurlyWood, true);
-                bitmap.Save(path);
-                using (Stream stream = System.IO.File.OpenRead(path))
 
+                if (student.CreatedQRCode.Year<DateTime.Now.Year
+                  |  student.CreatedQRCode.Month < DateTime.Now.Month
+                  | student.CreatedQRCode.Day< DateTime.Now.Day)
                 {
-                    await botClient.SendPhotoAsync(chatId: chatId, photo: InputFile.FromStream(stream), caption: "Quyidagi QR Code 12 soat davomida amal qiladi");
+                    var data = await QRCodeDataApi.GetData("", "");
+                    string path = Guid.NewGuid().ToString() + ".npg";
+                    QRCodeGenerator qRCodeGenerator = new();
+                    QRCodeData qRCodeData = qRCodeGenerator.CreateQrCode(data, QRCodeGenerator.ECCLevel.Q);
+                    QRCode qrCode = new(qRCodeData);
+                    Bitmap bitmap = qrCode.GetGraphic(20, System.Drawing.Color.DarkRed, System.Drawing.Color.BurlyWood, true);
+                    bitmap.Save(path);
+                    using (Stream stream = System.IO.File.OpenRead(path))
+                    {
+                        await botClient.SendPhotoAsync(chatId: chatId, photo: InputFile.FromStream(stream), caption: "Quyidagi QR Code shu kun davomida amal qiladi");
+                        await botClient.SendTextMessageAsync(ConfigurationService._configuration!["Admin"]!, $"Ism: {student.FirstName}\nFamiliya: {student.LastName}\nTelefon Nomer: {student.PhoneNumber}\nLimit: {student.Limit - 1}");
+                    }
+                    student!.Limit = student!.Limit - 1;
+                    student.CreatedQRCode = DateTime.Now;
+                    if (student!.Limit == 0)
+                    {
+                        await botClient.SendTextMessageAsync(chatId, text: $"Sizning limitingiz tugadi yana limit olish uchun start bosib ma'lumotlaringizni qayta yuboring", replyMarkup: new ReplyKeyboardRemove());
 
-                }
-                student!.Limit = student!.Limit - 1;
-                if (student!.Limit == 0)
-                {
-                    await botClient.SendTextMessageAsync(chatId, text: $"Sizning limitingiz tugadi yana limit olish uchun start bosib malumotlaringizni qayta yuboring", replyMarkup: new ReplyKeyboardRemove());
-                    student.State = State.ForFullName.ToString();
-                    student.IsConfirmed = false;
-                    student.IsRightInformation = false;
-                    dbContext.Students.Update(student);
+                        dbContext.Students.Remove(student);
+                    }
+                    else
+                        await botClient.SendTextMessageAsync(chatId, text: $"Sizning limitingiz {student.Limit} ta qoldi", replyMarkup: reply);
+                    await dbContext.SaveChangesAsync();
+                    System.IO.File.Delete(path);
                 }
                 else
-                    await botClient.SendTextMessageAsync(chatId, text: $"Sizning limitingiz {student.Limit} ta qoldi", replyMarkup: reply);
-                await dbContext.SaveChangesAsync();
-                System.IO.File.Delete(path);
-
+                        await botClient.SendTextMessageAsync(chatId, text: "Bir kun davomida 1 ta QR Code olishingiz mumkun", replyMarkup: reply);
             }
             else
             {
-                await botClient.SendTextMessageAsync(chatId, text: $"sizning limitingiz tugagan yana limit olish uchun start bosing!", replyMarkup: reply);
+                await botClient.SendTextMessageAsync(chatId, text: $"Sizning limitingiz tugagan yana limit olish uchun start bosing!", replyMarkup: reply);
 
             }
         }

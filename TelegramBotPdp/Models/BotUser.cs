@@ -11,7 +11,8 @@ public class BotUser
 enum State
 {
     ForStart=1,
-    ForFullName,
+    ForFirstName,
+    ForLastName,
     ForPhoneNumber,
     ForReason,
     ForIsRightInformation,

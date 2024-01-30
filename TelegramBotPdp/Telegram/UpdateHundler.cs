@@ -16,10 +16,9 @@ public class UpdateHundler : IUpdateHandler
 
     public async Task HandleUpdateAsync(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, CancellationToken cancellationToken)
     {
-
-
         try
         {
+
             var dbContext = new AppDbContext();
             if (update.Message is not null)
             {
@@ -47,14 +46,14 @@ public class UpdateHundler : IUpdateHandler
             else
             {
                 global::Telegram.Bot.Types.CallbackQuery? callbackQuery = update.CallbackQuery;
-                    var student = (await dbContext.Students.FirstOrDefaultAsync(x => x.Id == callbackQuery!.From.Id.ToString())) ?? new Student();
+                var student = (await dbContext.Students.FirstOrDefaultAsync(x => x.Id == callbackQuery!.From.Id.ToString())) ?? new Student();
                 if (callbackQuery is not null)
                 {
                     if (student.State == State.ForIsRightInformation.ToString())
                     {
                         await BotService.ForIsRightInformation(botClient, update, dbContext);
                     }
-                    else if(State.ForAdmin.ToString()==student.State)
+                    else if (State.ForAdmin.ToString() == student.State)
                     {
                         if (callbackQuery.From.Id.ToString() == ConfigurationService._configuration!["Admin"])
                         {
@@ -66,7 +65,7 @@ public class UpdateHundler : IUpdateHandler
         }
         catch (Exception e)
         {
-              await botClient.SendTextMessageAsync(ConfigurationService._configuration!["Admin"]!, $"Xatolik chiqdi!\n\n{e}");
+            await botClient.SendTextMessageAsync(ConfigurationService._configuration!["Admin"]!, $"Xatolik chiqdi!\n\n{e}");
         }
     }
     static async Task ChoiceSwitch(ITelegramBotClient botClient, global::Telegram.Bot.Types.Update update, AppDbContext dbContext, Student student)
@@ -77,13 +76,15 @@ public class UpdateHundler : IUpdateHandler
         {
             switch (student!.State)
             {
-                case "ForFullName":
-                    await BotService.ForFullNameAsync(botClient, update, dbContext); break;
+                case "ForFirstName":
+                    await BotService.ForFirstNameAsync(botClient, update, dbContext); break;
+                case "ForLastName":
+                    await BotService.ForLastNameAsync(botClient, update, dbContext); break;
                 case "ForPhoneNumber":
                     await BotService.ForPhoneNumberAsync(botClient, update, dbContext); break;
                 case "ForReason":
                     await BotService.ForReasonAsync(botClient, update, dbContext); break;
-                            case "ForConfirmed":
+                case "ForConfirmed":
                     await BotService.CreateQRCodeAsync(botClient, update, dbContext); break;
             }
         }
