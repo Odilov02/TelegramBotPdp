@@ -1,4 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
+﻿
+using Microsoft.EntityFrameworkCore;
 using TelegramBotPdp.Models;
 
 namespace TelegramBotPdp;
@@ -9,7 +10,7 @@ public class AppDbContext : DbContext
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
-        optionsBuilder.UseSqlite("Data Source=Data.db");
+        optionsBuilder.UseSqlServer("Data Source=ServerName;Initial Catalog=DatabaseName;User ID=UserName;Password=Password");
         base.OnConfiguring(optionsBuilder);
     }
 }
