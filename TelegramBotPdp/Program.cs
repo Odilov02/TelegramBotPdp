@@ -9,8 +9,16 @@ public class Program
         builder.Services.AddControllers();
         builder.Services.AddEndpointsApiExplorer();
         builder.Services.AddTelegramBot(builder.Configuration);
+        builder.Services.AddSwaggerGen();
+
         var app = builder.Build();
+
+        
+        app.UseSwagger();
+        app.UseSwaggerUI();
+        
         builder.Services.AddConfiguration(builder.Configuration);
+        
         app.UseHttpsRedirection();
         app.UseAuthorization();
         app.MapControllers();
